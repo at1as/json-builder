@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="./css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="./css/bootstrap-theme.min.css">
+    <link rel="stylesheet" type="text/css" href="./css/main.css">
+    <title>JSON Builder</title>
+  </head>
+  <body>
+    <div class="container-fluid">
+      <h1>Add a New Entry</h1>
+
+      <div class="flex-wrapper">
+        <div>
+        <label class="col-sm-2 control-label" for="global-key" style="width:auto; display:flex">Global Key</label>
+          <input class="form-control" type="input" id="global-key" style="width:auto; display:flex"/>
+        </div>
+      </div>
+
+      <div id="button-container">
+        <input type="button" class="btn" value="Add Page" id="add-page" onclick="add_page()"/>
+        <input type="button" class="btn" value="Generate" id="generate-json" onclick="generate_json_file()"/>
+        <select id="select-active-form" class="form-control" onchange="visible_item(this)">
+          <option value="-1">All Items</option>
+          <option value="0">Item 1</option>
+        </select>
+      </div>
+      <hr>
+
+      <div id="form-container">
+      </div>
+
+    </div>
+  </body>
+
+  <script>
+    'use strict'
+
+    require('../renderer.js')
+    var fs      = require('fs');
+    var payload = require('../data.json')
+
+    var object_array_key = Object.keys(payload)[0]
+    var json_object      = payload[object_array_key][0]
+    var object_key       = 'name'
+
+    if (!document.getElementById('global-key').value) {
+      document.getElementById('global-key').value = object_array_key
+    }
+
+
+    generate_form(0)
+
+    function generate_form(form_id){
+      /* Generate DOM objects for Form contents */
+      let form_data = loop_through_json([], json_object, '')
+
+      /* Generate form object */
+      let form = document.createElement('form')
+      form.setAttribute('method', 'post')
+      form.setAttribute('data-number', form_id)
+      form.setAttribute('data-index', form_id)
+      form.setAttribute('id', `json-builder-${form_id}`)
+      document.getElementById('form-container').appendChild(form)
+
+      /* Render to HTML page */
+      populate_dom_form_from_data(form_data, document.getElementById(form.id))
+    }
+
+    function prettify(str){
+      /* "camera-min apertaure" -> "Camera : Min Aperature" */
+      return(
+        str.split('-').map((words) =>
+          words.split(' ').map((word) =>
+            word[0].toUpperCase() + word.substring(1, word.length)
+          ).join(' ')
+        ).join(' : ')
+      )
+    }
+
+    function create_element(target_form, keyname, el, level){
+      /* Create new HTML Input or Text element */
+
+      if (typeof el === 'string'){
+        if (el === 'String') {
+          var new_input = document.createElement('Input');
+          new_input.setAttribute('type', 'text');
+          new_input.setAttribute('data-structure', 'string');
+          new_input.setAttribute('class', 'form-control');
+        } else {
+          var new_input = document.createElement('TextArea');
+          new_input.setAttribute('data-structure', 'text')
+          new_input.setAttribute('class', 'form-control');
+        }
+        return new_input
+
+      } else if (el instanceof Array) {
+        var new_input = document.createElement('Input');
+        new_input.setAttribute('type', 'text');
+        new_input.setAttribute('data-structure', 'array');
+        new_input.setAttribute('data-array-num', '0');
+        new_input.setAttribute('class', 'form-control');
+        //new_input.style.marginLeft = 20 * level + "px"
+        return new_input
+
+      } else if (el instanceof Object) {
+        loop_through_json(target_form, el, keyname, level + 1)
+        return;
+
+      }
+    }
+
+    function loop_through_json(target_form, key_vals, prepend_key, nested_level = 0){
+      for (var key in key_vals){
+
+        if (prepend_key) {
+          var key_id = `${prepend_key}-${key}`
+        } else {
+          var key_id = key
+        }
+
+        var new_label = document.createElement('Label');
+        var new_value = create_element(target_form, key, key_vals[key], nested_level);
+
+        new_label.innerHTML = prettify(key_id)
+        new_label.className += ' label-overrides'
+        if (new_value){
+          new_value.id = key_id;
+          new_value.className += ' label-overrides'
+        }
+
+        let add_field_btn = null
+        if (key_vals[key] instanceof Array) {
+          add_field_btn = document.createElement('input')
+          add_field_btn.setAttribute('type', 'button')
+          add_field_btn.setAttribute('value', '+')
+          add_field_btn.setAttribute('data-for', new_value.id)
+          add_field_btn.setAttribute('data-idx', new_value.getAttribute('data-array-num'))
+          add_field_btn.setAttribute('onclick', 'add_input_field(this)')
+          add_field_btn.setAttribute('class', 'btn btn-primary');
+        }
+
+        if (new_value != null) {
+          target_form.push(
+            new_label,
+            new_value
+          )
+          if (add_field_btn) target_form.push(add_field_btn)
+        }
+      }
+      return target_form;
+    }
+
+    function populate_dom_form_from_data(form_data, target_form){
+      form_data.forEach((el) => {
+        target_form.appendChild(el);
+      })
+    }
+
+
+    var nest = function(obj, keys, v) {
+      /* Insert element, v into object with nested keys */
+      if (keys.length === 1) {
+        if (v.getAttribute('data-structure') == 'array'){
+          if(!obj[keys[0]]){
+            obj[keys[0]] = []
+          }
+          if (v.value) obj[keys[0]].push(v.value)
+        } else {
+          obj[keys[0]] = v.value;
+        }
+      } else {
+        var key = keys.shift();
+        obj[key] = nest(typeof obj[key] === 'undefined' ? {} : obj[key], keys, v);
+      }
+
+      return obj;
+    };
+
+    function create_json(form_id){
+      /* Build form data into a JSON object */
+      var json_data = document.getElementById(`json-builder-${form_id}`).elements;
+      var json_payload = {}
+
+      for(let i=0; i < json_data.length ; i++){
+        let element     = json_data[i]
+        let nested_keys = element.id.split('-')
+
+        /* skip labels, etc */
+        if (element.type === 'text'){
+          /* object[key] = value (no deeper nesting) */
+          if ((nested_keys.length - 1) === 0) {
+            if (element.getAttribute('data-structure') === 'array'){
+              if (!json_payload[element.id]) {
+                json_payload[element.id] = []
+                if (element.value) json_payload[element.id].push(element.value);
+              } else {
+                if (element.value) json_payload[element.id].push(element.value);
+              }
+            } else { // if not array, must be string
+              if (element.value) json_payload[element.id] = element.value;
+            }
+          /* object[key1][key2] = value (need to ensure parent objects exist) */
+          } else {
+            json_payload = nest(json_payload, nested_keys, element)
+          }
+        }
+      }
+      return json_payload;
+    }
+
+    function json_subobjects(obj, key){
+      var parent_obj  = {}
+      parent_obj[key] = []
+      obj.forEach(payload =>
+        parent_obj[key].push(payload)
+      );
+      return parent_obj
+    }
+
+    function write_json(file_contents, filename='./json_output.json'){
+      /* Write JSON object to file */
+      fs.writeFile(filename, JSON.stringify(file_contents, null, 2), (err) => {
+        if(err) console.error(err);
+      });
+    }
+
+    function add_page(){
+      let form_count = document.getElementById('form-container').children.length;
+      generate_form(form_count)
+      generate_option(form_count)
+    }
+
+    function add_input_field(btn){
+      let form_id = btn.parentNode.getAttribute('data-number')
+      let target_field = btn.previousElementSibling
+      let next_input_field = target_field.cloneNode(true)
+      next_input_field.setAttribute('data-array-num', Number(target_field.getAttribute('data-array-num')) + 1)
+      next_input_field.value = ''
+      document.getElementById(`json-builder-${form_id}`).insertBefore(next_input_field, btn)
+    }
+
+    function generate_json_file(){
+      let forms = document.getElementById('form-container').children
+      let extracted_json_data = []
+      for (let i=0; i < forms.length; i++){
+        extracted_json_data.push(create_json(i))
+      }
+
+      let payload_key = document.getElementById('global-key').value || object_array_key
+      let formatted_json = json_subobjects(extracted_json_data, payload_key)
+      write_json(formatted_json)
+    }
+
+    function visible_item(selection){
+      /* Hide all forms whose 'data-number' don't match selection.value */
+      let forms = document.getElementById('form-container').children;
+      for(var i=0; i<forms.length; i++){
+        if ((forms[i].getAttribute('data-number') == selection.value) || selection.value == -1) {
+          forms[i].style.display = ''
+        } else {
+          forms[i].style.display = 'none'
+        }
+      }
+    }
+
+    function generate_option(option_id){
+      /* Add new option to selector */
+      let select = document.getElementById('select-active-form')
+      let option = document.createElement('option')
+      option.value = option_id
+      option.innerHTML = `Item ${option_id + 1}`
+      select.appendChild(option)
+    }
+
+    function repopulate_option_list(){
+      /* Add new option to select (when new form is created) */
+      let select = document.getElementById('select-active-form')
+      let forms  = document.getElementById('form-container').children
+
+      for(var i=0; i < select.children.length ; i++){
+        var target_form_id = select.children[i].value
+        for(var j=0; j < forms.length; j++){
+          if (forms[j].getAttribute('data-number') == target_form_id){
+            select.children[i].innerHTML = `Item ${++target_form_id} : ${get_name(forms[j])}`
+            break;
+          }
+        }
+      }
+    }
+
+    function get_name(form, field='name'){
+      /* extract value of child node whose id matches 'name') */
+      for(var i=0; i<form.children.length; i++){
+        if (form.children[i].id == field) {
+          return form.children[i].value || '""';
+        }
+      }
+    }
+
+  </script>
+</html>
