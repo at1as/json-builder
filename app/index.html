@@ -21,7 +21,8 @@
       <div id="button-container">
         <input type="button" class="btn" value="Add Page" id="add-page" onclick="add_page()"/>
         <input type="button" class="btn" value="Generate" id="generate-json" onclick="generate_json_file()"/>
-        <select id="select-active-form" class="form-control" onchange="visible_item(this)">
+        <input type="button" class="btn" value="Import" id="import-json" onclick="import_existing_json()"/>
+        <select id="select-active-form" class="form-control" onchange="visible_item(this)" onclick="repopulate_option_list()">
           <option value="-1">All Items</option>
           <option value="0">Item 1</option>
         </select>
@@ -112,7 +113,7 @@
     }
 
     function loop_through_json(target_form, key_vals, prepend_key, nested_level = 0){
-      for (var key in key_vals){
+      for (let key in key_vals){
 
         if (prepend_key) {
           var key_id = `${prepend_key}-${key}`
@@ -256,7 +257,7 @@
     function visible_item(selection){
       /* Hide all forms whose 'data-number' don't match selection.value */
       let forms = document.getElementById('form-container').children;
-      for(var i=0; i<forms.length; i++){
+      for(let i=0; i<forms.length; i++){
         if ((forms[i].getAttribute('data-number') == selection.value) || selection.value == -1) {
           forms[i].style.display = ''
         } else {
@@ -279,9 +280,9 @@
       let select = document.getElementById('select-active-form')
       let forms  = document.getElementById('form-container').children
 
-      for(var i=0; i < select.children.length ; i++){
-        var target_form_id = select.children[i].value
-        for(var j=0; j < forms.length; j++){
+      for(let i=0; i < select.children.length ; i++){
+        let target_form_id = select.children[i].value
+        for(let j=0; j < forms.length; j++){
           if (forms[j].getAttribute('data-number') == target_form_id){
             select.children[i].innerHTML = `Item ${++target_form_id} : ${get_name(forms[j])}`
             break;
@@ -292,11 +293,102 @@
 
     function get_name(form, field='name'){
       /* extract value of child node whose id matches 'name') */
-      for(var i=0; i<form.children.length; i++){
+      for(let i=0; i<form.children.length; i++){
         if (form.children[i].id == field) {
           return form.children[i].value || '""';
         }
       }
+    }
+
+    function import_existing_json(filename = './existing_json_data.json'){
+      /* First delete all existing forms */
+      let form_container = document.getElementById('form-container')
+      let forms = form_container.children;
+      for (let i=0 ; i<forms.length ; i++){
+        form_container.removeChild(forms[i])
+      }
+
+      /* Import data from file */
+      fs.readFile(filename, {encoding: 'utf-8'}, (err, data) => {
+        if(!err){
+          let existing_json_data = JSON.parse(data)
+          let primary_key  = Object.keys(existing_json_data)[0]
+          let json_objects = existing_json_data[primary_key]
+
+          for (let i=0 ; i<json_objects.length ; i++){
+            add_page()
+            populate_form(i, json_objects[i])
+          }
+        } else {
+          console.error(err);
+        }
+      });
+    }
+
+    function get_form_at_index(idx){
+      /* Return DOM form with 'data-number' matching idx param */
+      let form_container = document.getElementById('form-container').children
+      let form;
+
+      for (let i=0 ; i<form_container.length ; i++){
+        if (form_container[i].getAttribute('data-number') == idx){
+          form = form_container[i]
+          break;
+        }
+      }
+      return form
+    }
+
+    function populate_form(idx, form_data, path=[]){
+      let form = get_form_at_index(idx)
+
+      for (let key in form_data){ //iterate each field in json data
+
+        let full_path = (path.concat(key)).join('-')
+
+        if (typeof form_data[key] === 'object'){
+          if (form_data[key] instanceof Array){
+            add_array_form_data(idx, form_data[key], full_path)
+          } else {
+            populate_form(idx, form_data[key], path.concat([key]))
+          }
+
+        } else {
+          for (let j=0 ; j<form.length ; j++){
+            if (form[j].getAttribute('id') == full_path){
+              form[j].value = form_data[key]
+            }
+          }
+        }
+      }
+    }
+
+    function add_array_form_data(idx, array, keyname){
+      let form = get_form_at_index(idx)
+      /* Create enough form fields to populate */
+      for (let i=0 ; i<form.length ; i++){
+        if (form[i].getAttribute('data-for') == keyname){
+          [...Array(array.length - 1).keys()].forEach(offset => {
+            form[i + offset].click();
+          });
+          break;
+        }
+      }
+
+      /* Locate input field created fields */
+      let input_fields = []
+      for (let i=0 ; i<form.length ; i++){
+        if (form[i].getAttribute('id') == keyname){
+          input_fields.push(form[i]);
+        }
+      }
+
+      /* Populate created fields with array data */
+      let i = 0
+      array.forEach(item => {
+        input_fields[i].value = item
+        i++
+      });
     }
 
   </script>
