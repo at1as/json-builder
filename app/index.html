@@ -22,10 +22,6 @@
         <input type="button" class="btn" value="Add Page" id="add-page" onclick="add_page()"/>
         <input type="button" class="btn" value="Generate" id="generate-json" onclick="generate_json_file()"/>
         <input type="button" class="btn" value="Import" id="import-json" onclick="import_existing_json()"/>
-        <select id="select-active-form" class="form-control" onchange="visible_item(this)" onclick="repopulate_option_list()">
-          <option value="-1">All Items</option>
-          <option value="0">Item 1</option>
-        </select>
       </div>
       <hr>
 
@@ -33,6 +29,14 @@
       </div>
 
     </div>
+
+    <div id="footer">
+      <select id="select-active-form" class="form-control" onchange="visible_item(this)" onclick="repopulate_option_list()">
+        <option value="-1">All Items</option>
+        <option value="0">Item 1</option>
+      </select>
+    </div>
+
   </body>
 
   <script>
@@ -182,6 +186,7 @@
     function create_json(form_id){
       /* Build form data into a JSON object */
       var json_data = document.getElementById(`json-builder-${form_id}`).elements;
+      console.log(json_data)
       var json_payload = {}
 
       for(let i=0; i < json_data.length ; i++){
@@ -189,7 +194,7 @@
         let nested_keys = element.id.split('-')
 
         /* skip labels, etc */
-        if (element.type === 'text'){
+        if (element.type === 'text' || element.getAttribute('data-structure') === 'text'){
           /* object[key] = value (no deeper nesting) */
           if ((nested_keys.length - 1) === 0) {
             if (element.getAttribute('data-structure') === 'array'){
@@ -368,7 +373,8 @@
       /* Create enough form fields to populate */
       for (let i=0 ; i<form.length ; i++){
         if (form[i].getAttribute('data-for') == keyname){
-          [...Array(array.length - 1).keys()].forEach(offset => {
+          let range = Math.max(0, array.length - 1);
+          [...Array(range).keys()].forEach(offset => {
             form[i + offset].click();
           });
           break;
