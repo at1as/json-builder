@@ -9,21 +9,16 @@
   </head>
   <body>
     <div class="container-fluid">
-      <h1>Add a New Entry</h1>
-
-      <div class="flex-wrapper">
-        <div>
-        <label class="col-sm-2 control-label" for="global-key" style="width:auto; display:flex">Global Key</label>
-          <input class="form-control" type="input" id="global-key" style="width:auto; display:flex"/>
-        </div>
-      </div>
+      <h1 style="text-align:center">JSON Builder</h1>
 
       <div id="button-container">
+        <div class="flex-wrapper">
+          <input class="form-control" type="input" id="global-key" style="width:auto; display:flex" placeholder="Data Key"/>
+        </div>
         <input type="button" class="btn" value="Add Page" id="add-page" onclick="add_page()"/>
         <input type="button" class="btn" value="Generate" id="generate-json" onclick="generate_json_file()"/>
         <input type="button" class="btn" value="Import" id="import-json" onclick="import_existing_json()"/>
       </div>
-      <hr>
 
       <div id="form-container">
       </div>
@@ -31,10 +26,11 @@
     </div>
 
     <div id="footer">
+      <input type="button" class="btn page-btn" value="<" onclick="go_to_page('prev')"/>
       <select id="select-active-form" class="form-control" onchange="visible_item(this)" onclick="repopulate_option_list()">
         <option value="-1">All Items</option>
-        <option value="0">Item 1</option>
       </select>
+      <input type="button" class="btn page-btn" value=">" onclick="go_to_page('next')"/>
     </div>
 
   </body>
@@ -54,7 +50,7 @@
       document.getElementById('global-key').value = object_array_key
     }
 
-
+    /* Called on initial page load to create the first form */
     generate_form(0)
 
     function generate_form(form_id){
@@ -234,8 +230,11 @@
 
     function add_page(){
       let form_count = document.getElementById('form-container').children.length;
-      generate_form(form_count)
-      generate_option(form_count)
+      generate_form(form_count)   /* new form */
+      generate_option(form_count) /* selector in footer */
+
+      show_one_form(form_count)   /* Hide all other forms */
+      document.getElementById('select-active-form').value = form_count;
     }
 
     function add_input_field(btn){
@@ -261,9 +260,13 @@
 
     function visible_item(selection){
       /* Hide all forms whose 'data-number' don't match selection.value */
+      show_one_form(selection.value)
+    }
+
+    function show_one_form(formid){
       let forms = document.getElementById('form-container').children;
       for(let i=0; i<forms.length; i++){
-        if ((forms[i].getAttribute('data-number') == selection.value) || selection.value == -1) {
+        if ((forms[i].getAttribute('data-number') == formid) || formid == -1) {
           forms[i].style.display = ''
         } else {
           forms[i].style.display = 'none'
@@ -308,9 +311,8 @@
     function import_existing_json(filename = './existing_json_data.json'){
       /* First delete all existing forms */
       let form_container = document.getElementById('form-container')
-      let forms = form_container.children;
-      for (let i=0 ; i<forms.length ; i++){
-        form_container.removeChild(forms[i])
+      while (form_container.hasChildNodes()){
+        form_container.removeChild(form_container.lastChild);
       }
 
       /* Import data from file */
@@ -324,6 +326,9 @@
             add_page()
             populate_form(i, json_objects[i])
           }
+          /* gathers items nested under the first key (primary_key) found in JSON payload */
+          document.getElementById('global-key').value = primary_key;
+          repopulate_option_list(); /* Eager load entries into the select in footer */
         } else {
           console.error(err);
         }
@@ -396,6 +401,29 @@
         i++
       });
     }
+  
+    function go_to_page(direction){
+      let selector = document.getElementById('select-active-form');
+
+      let idx;
+      for (let i=0 ; i<selector.children.length ; i++){
+        /* Find node that is currently selected in dropdown*/
+        if (selector.value == selector.children[i].value){
+          idx = i;
+          break;
+        }
+      }
+
+      if (direction === 'next'){
+        if (idx === selector.children.length - 1) { return; } /* Last option already selected */
+        selector.selectedIndex = idx + 1;
+        show_one_form(idx);
+      } else if (direction === 'prev'){
+        if (idx === 0) { return; } /* first option selected */
+        selector.selectedIndex = idx - 1;
+        show_one_form(idx - 2);
+      }
+  }
 
   </script>
 </html>

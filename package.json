@@ -1,6 +1,6 @@
 {
   "name": "json-builder",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Interface to Build JSON Documents",
   "main": "main.js",
   "scripts": {
