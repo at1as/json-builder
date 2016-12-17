@@ -346,7 +346,7 @@
       /* Delete all entries from drop down selector except the first "All Items" entry */
       let selector = document.getElementById('select-active-form');
       let options  = selector.children.length;
-      for (let i=0 ; i < options ; i++){
+      for (let i=0 ; i < options - 1; i++){
         selector.removeChild(selector.lastChild);
       }
 
@@ -463,21 +463,23 @@
     }
 
     function delete_active_pages(){
-      //TODO: But when current option is "All Items"
-      while (true){
-        let begin_loop = false;
-        let forms = document.getElementById('form-container');
-        let form_children = forms.children;
-        for (let i=0 ; i < form_children.length ; i++){
-          if (form_children[i].style.display !== 'none'){ // && form_children[i].style.display !== ''){
-            begin_loop = true;
-            form_children[i].parentNode.removeChild(form_children[i]);
-            // restart loop on match, since deleting element changes indexes
-            continue
-          }
+      let active_pages = [];
+      let forms = document.getElementById('form-container');
+      let form_children = forms.children;
+
+      /* Get all visible forms */
+      for (let i=0 ; i < form_children.length ; i++){
+        if (form_children[i].style.display !== 'none'){
+          active_pages.push(form_children[i].getAttribute('id'));
         }
-        break; //No matches = no more visible forms
       }
+
+      /* delete visible forms */
+      while (active_pages.length > 0){
+        let current_node = document.getElementById(active_pages.pop());
+        current_node.parentNode.removeChild(current_node);
+      }
+      
       /* Ex. If page 17 is deleted, try to go to 18. Otherwise try to go to 16 */
       if (go_to_page('next')){ 
         reindex_select();
