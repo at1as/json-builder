@@ -12,12 +12,18 @@
       <h1 style="text-align:center">JSON Builder</h1>
 
       <div id="button-container">
-        <div class="flex-wrapper">
+        <div class="form-group has-feedback" style="margin-bottom:0px">
           <input class="form-control" type="input" id="global-key" style="width:auto; display:flex" placeholder="Data Key"/>
+          <a href="#" class="tooltip-info" data-placement="left" data-toggle="tooltip" title="" tabindex="-1" data-original-title="Searches for any word in title begining with your query [ex. 'Dia' returns 'Blood Diamond']">
+            <i class="glyphicon glyphicon-info-sign question-filter form-control-feedback"></i>
+          </a>
+                                      <!--<i class="glyphicon glyphicon-info-sign question-filter form-control-feedback" title="hi"></i>-->
         </div>
-        <input type="button" class="btn" value="Add Page" id="add-page" onclick="add_page()"/>
-        <input type="button" class="btn" value="Generate" id="generate-json" onclick="generate_json_file()"/>
-        <input type="button" class="btn" value="Import" id="import-json" onclick="import_existing_json()"/>
+        <input type="button" class="btn" value="Add Page" id="add-page" onclick="add_page() ; generate_json_file(true)" title="Add a new page to the document"/>
+        <input type="button" class="btn" value="Delete Page" id="delete-pages" onclick="delete_active_pages()" title="Delete current page"/>
+        <input type="button" class="btn" value="Generate" id="generate-json" onclick="generate_json_file(false)" title="Save entire json document to file"/>
+        <input type="button" class="btn" value="Import" id="import-json" onclick="import_existing_json()" title="Import data from json document"/>
+        <input type="button" class="btn" value="Preview" id="preview-json" onclick="preview_form()" title="preview document in table form"/>
       </div>
 
       <div id="form-container">
@@ -51,7 +57,7 @@
     }
 
     /* Called on initial page load to create the first form */
-    generate_form(0)
+    add_page(0);
 
     function generate_form(form_id){
       /* Generate DOM objects for Form contents */
@@ -182,7 +188,7 @@
     function create_json(form_id){
       /* Build form data into a JSON object */
       var json_data = document.getElementById(`json-builder-${form_id}`).elements;
-      console.log(json_data)
+      //console.log(json_data)
       var json_payload = {}
 
       for(let i=0; i < json_data.length ; i++){
@@ -229,12 +235,30 @@
     }
 
     function add_page(){
+      /* Add new form page and navigate to it */
       let form_count = document.getElementById('form-container').children.length;
       generate_form(form_count)   /* new form */
       generate_option(form_count) /* selector in footer */
 
+      set_form_id(form_count)
       show_one_form(form_count)   /* Hide all other forms */
       document.getElementById('select-active-form').value = form_count;
+    }
+
+    function set_form_id(form_id){
+      let target_form = document.getElementById(`json-builder-${form_id}`);
+      let form_fields = target_form.children;
+      
+      for (let i=0 ; i < form_fields.length; i++){
+        if (form_fields[i].getAttribute('id') === 'id'){
+          if (form_fields[i].value == ''){
+
+            /* Start form id's at index 1 */
+            form_fields[i].value = form_id + 1;
+            break;
+          }
+        }
+      }
     }
 
     function add_input_field(btn){
@@ -246,7 +270,7 @@
       document.getElementById(`json-builder-${form_id}`).insertBefore(next_input_field, btn)
     }
 
-    function generate_json_file(){
+    function generate_json_file(tempfile){
       let forms = document.getElementById('form-container').children
       let extracted_json_data = []
       for (let i=0; i < forms.length; i++){
@@ -255,7 +279,11 @@
 
       let payload_key = document.getElementById('global-key').value || object_array_key
       let formatted_json = json_subobjects(extracted_json_data, payload_key)
-      write_json(formatted_json)
+      if (tempfile){
+        write_json(formatted_json, './generated-backup.json');
+      } else {
+        write_json(formatted_json)
+      }
     }
 
     function visible_item(selection){
@@ -313,6 +341,13 @@
       let form_container = document.getElementById('form-container')
       while (form_container.hasChildNodes()){
         form_container.removeChild(form_container.lastChild);
+      }
+
+      /* Delete all entries from drop down selector except the first "All Items" entry */
+      let selector = document.getElementById('select-active-form');
+      let options  = selector.children.length;
+      for (let i=0 ; i < options ; i++){
+        selector.removeChild(selector.lastChild);
       }
 
       /* Import data from file */
@@ -418,12 +453,89 @@
         if (idx === selector.children.length - 1) { return; } /* Last option already selected */
         selector.selectedIndex = idx + 1;
         show_one_form(idx);
+        return true;
       } else if (direction === 'prev'){
         if (idx === 0) { return; } /* first option selected */
         selector.selectedIndex = idx - 1;
         show_one_form(idx - 2);
+        return true;
       }
-  }
+    }
+
+    function delete_active_pages(){
+      //TODO: But when current option is "All Items"
+      while (true){
+        let begin_loop = false;
+        let forms = document.getElementById('form-container');
+        let form_children = forms.children;
+        for (let i=0 ; i < form_children.length ; i++){
+          if (form_children[i].style.display !== 'none'){ // && form_children[i].style.display !== ''){
+            begin_loop = true;
+            form_children[i].parentNode.removeChild(form_children[i]);
+            // restart loop on match, since deleting element changes indexes
+            continue
+          }
+        }
+        break; //No matches = no more visible forms
+      }
+      /* Ex. If page 17 is deleted, try to go to 18. Otherwise try to go to 16 */
+      if (go_to_page('next')){ 
+        reindex_select();
+        return;
+      }
+      if (go_to_page('prev')){ 
+        reindex_select();
+        return;
+      }
+
+    }
+
+    function reindex_select(){
+      /* Delete all entries from select except the first "All Items" */
+      let selector = document.getElementById('select-active-form');                                                                                                                                                     
+      while (selector.children.length > 1){
+        selector.removeChild(selector.lastChild);
+      }
+      reindex_form_ids();
+      rebuild_option_list();
+      /* Update options to include new titles */
+      repopulate_option_list();
+    }
+
+    function reindex_form_ids(){
+      /* After deleting a page, reindex all IDs so they are sequential */
+      let form_container = document.getElementById('form-container');
+      let forms = form_container.children;
+      for (let i=0 ; i < forms.length ; i++){
+        /* Update form values */
+        forms[i].setAttribute('data-number', i)
+        forms[i].setAttribute('data-index', i)
+        forms[i].setAttribute('id', `json-builder-${i}`)
+
+        /* Update values of id field with in each form. Note IDs start at index 1 */
+        let form_children = forms[i].children;
+        for (let j=0 ; j < form_children.length ; j++){
+          if (form_children[j].getAttribute('id') === 'id'){
+            form_children[j].value = i + 1;
+          }
+        }
+      }
+    }
+
+    function rebuild_option_list(){
+      let forms    = document.getElementById('form-container').children;
+      let selector = document.getElementById('select-active-form');
+      for (let i=0 ; i < forms.length ; i++){
+        generate_option(i);
+        if (forms[i].style.display !== 'none'){
+          selector.selectedIndex = i + 1;
+        }
+      }
+    }
+
+    function json_to_html_tables(){
+      
+    }
 
   </script>
 </html>
