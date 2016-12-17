@@ -320,7 +320,7 @@
         let target_form_id = select.children[i].value
         for(let j=0; j < forms.length; j++){
           if (forms[j].getAttribute('data-number') == target_form_id){
-            select.children[i].innerHTML = `Item ${++target_form_id} : ${get_name(forms[j])}`
+            select.children[i].innerHTML = `Item ${++target_form_id} of ${select.children.length - 1} : ${get_name(forms[j])}`
             break;
           }
         }
