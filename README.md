@@ -29,7 +29,7 @@ Expects a JSON document with an array of objects stored under a key. The structu
 
 Values may themselves be nested objects. If a second top level key is given, underneath `global_key` (at the same level), the first key will be used by default. Otherwise the desired key to use can be set in the UI under the `Data Key` input.
 
-#### Example
+#### JSON Data for Import - Example
 
 ```
 {
@@ -76,15 +76,15 @@ For the moment, JSON documents must be defined in a schema. It is difficult othe
 
 The schema should follow the structure of the JSON document, defining three types:
 
-* "String" (text data)
-* [] (an array of elements)
-* {} (a subobject with the keys and values defined within - see "camera" below)
+* `"String"` (text data)
+* `[]` (an array of elements)
+* `{}` (a subobject with the keys and values defined within - see "camera" below)
 
 Currently integers are not 
 
 
 
-#### Example:
+#### JSON Schema - Example:
 
 ```
 {
@@ -112,12 +112,12 @@ Currently integers are not
 }
 ```
 
-This file must be title `data.json`
+This file must be titled `data.json`
 
 
 ## Building new JSON files
 
-Same steps as above (with defining the schema), however the data import steps is clearly not necessary.
+Same steps as above (with defining the schema), however the data import step is clearly not necessary.
 
 
 ### Running
@@ -132,6 +132,13 @@ $ npm install
 
 $ npm start
 ```
+
+### Operations
+* Add Page (add a new JSON object at the end of the list – would create an Item 53 in the screenshot above)
+* Delete Page (delete the currently displayed page. Will re-index IDs so they are sequential and do no skip numbers)
+* Generate (save data to `json_output.json`)
+* Import (import existing data from `existing_json_data.json`)
+* Preview (preview JSON object in HTML table form to quickly get an overview)
 
 ### Notes
 
