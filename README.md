@@ -77,10 +77,11 @@ For the moment, JSON documents must be defined in a schema. It is difficult othe
 The schema should follow the structure of the JSON document, defining three types:
 
 * `"String"` (text data)
+* `"Text"` (Same as above, but will render a \<textarea\> element to more easily write many sentences)
 * `[]` (an array of elements)
 * `{}` (a subobject with the keys and values defined within - see "camera" below)
 
-Currently integers are not 
+Currently integers should simply be saved as strings.
 
 
 
@@ -155,4 +156,6 @@ $ npm start
 
 * Visually display JSON as Table
 * Test Schema with array of nested objects (unlikely to work)
+* TODO: Add integer / float types
+* TODO: Add Enum type (so items can be one of only several defined values)
 
