@@ -4,8 +4,14 @@ Visually create, explore or modify JSON payloads. This tool provides a way to sa
 
 
 ## Screenshot
+*Modify Data*
 <p align="center">
-  <img src="http://at1as.github.io/github_repo_assets/json-builder-1.png" style="max-width:500px"/>
+  <img src="http://at1as.github.io/github_repo_assets/json-builder-1.png" width="600px"/>
+</p>
+
+*Preview Data*
+<p align="center">
+  <img src="http://at1as.github.io/github_repo_assets/json-builder-2.png" width="600px"/>
 </p>
 
 ## Importing / Modifying JSON
