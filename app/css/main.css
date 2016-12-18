@@ -47,7 +47,7 @@ textarea{
 }
 label{
   margin-top:10px;
-  margin-left:-3px;
+  margin-left:-4px;
 }
 input{
   margin-top:2px;
@@ -80,4 +80,21 @@ input{
 }
 .question-filter:hover{
   background-color:red;
+}
+th{
+  background-color:#861616;
+  color:white;
+  border:1px solid black;
+  text-align:center;
+  font-weight:400;
+  padding: 8px;
+}
+.table-key{
+  padding:10px;
+  border:1px solid grey;
+  font-weight:600;
+}
+.table-value{
+  padding:8px;
+  border:1px solid grey;
 }

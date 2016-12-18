@@ -14,7 +14,7 @@ Expects two pices of infomration: a JSON payload, and a defined schema
 
 ### 1 of 2 : JSON Data for Import
 
-Expects a JSON document with an array of objects stored under a key. The structure should match the following format and a unique "id" field is highly recommended:
+Expects a JSON document with an array of objects stored under a key. The structure should match the following format and a unique "id" field of type Integer or String is recommended:
 
 ```
 {
@@ -27,7 +27,7 @@ Expects a JSON document with an array of objects stored under a key. The structu
 }
 ```
 
-Values may themselves be nested objects. If a second top level key is given, underneath `global_key` (at the same level), the first key will be used by default. Otherwise the desired key to use can be set in the UI under the `Data Key` input.
+Keys should not contain dashes ('-') as this is used internally for nesting representation. Values may themselves be nested objects. If a second top level key is given, underneath `global_key` (at the same level), the first key will be used by default. Otherwise the desired key to use can be set in the UI under the `Data Key` input.
 
 #### JSON Data for Import - Example
 
@@ -115,6 +115,8 @@ Currently integers should simply be saved as strings.
 
 This file must be titled `data.json`
 
+Note that keys will display in the UI in the order they are listed in the data.json schema.
+
 
 ## Building new JSON files
 
@@ -154,8 +156,11 @@ $ npm start
 
 ### TODO
 
-* Visually display JSON as Table
 * Test Schema with array of nested objects (unlikely to work)
 * TODO: Add integer / float types
 * TODO: Add Enum type (so items can be one of only several defined values)
-
+* Bug: Does not handle second level nesting. Nested objects in arrays are ignored
+* Bug: Does not handle second level nesting. Second level nested objects are saved on the top level item
+* TODO: Preview does support second level nesting
+* TODO: Major code cleanup required
+* TODO: Reorder items

@@ -9,7 +9,7 @@
   </head>
   <body>
     <div class="container-fluid">
-      <h1 style="text-align:center">JSON Builder</h1>
+      <h1 style="text-align:center">JSON Data Builder</h1>
 
       <div id="button-container">
         <div class="form-group has-feedback" style="margin-bottom:0px">
@@ -25,7 +25,12 @@
         <input type="button" class="btn" value="Import" id="import-json" onclick="import_existing_json()" title="Import data from json document"/>
         <input type="button" class="btn" value="Preview" id="preview-json" onclick="preview_form()" title="preview document in table form"/>
       </div>
+      
+      <!-- display stylized json as tables -->
+      <div id="preview-container">
+      </div>
 
+      <!-- All form objects under here -->
       <div id="form-container">
       </div>
 
@@ -34,7 +39,7 @@
     <div id="footer">
       <input type="button" class="btn page-btn" value="<" onclick="go_to_page('prev')"/>
       <select id="select-active-form" class="form-control" onchange="visible_item(this)" onclick="repopulate_option_list()">
-        <option value="-1">All Items</option>
+        <option value="-1">-- All Items</option>
       </select>
       <input type="button" class="btn page-btn" value=">" onclick="go_to_page('next')"/>
     </div>
@@ -45,23 +50,37 @@
     'use strict'
 
     require('../renderer.js')
-    var fs      = require('fs');
-    var payload = require('../data.json')
+    var fs = require('fs');
+    var preview = false; // state of preview button toggle
 
-    var object_array_key = Object.keys(payload)[0]
-    var json_object      = payload[object_array_key][0]
-    var object_key       = 'name'
-
-    if (!document.getElementById('global-key').value) {
-      document.getElementById('global-key').value = object_array_key
+    try{
+      var payload = require('../data.json');
+      var object_array_key = Object.keys(payload)[0]
+      var json_object      = payload[object_array_key][0]
+    } catch(ex) {
+      var payload = null;
     }
 
-    /* Called on initial page load to create the first form */
-    add_page(0);
+    /* If global key (under which data objects are stored) is not set use first one visible in payload */
+    if (!document.getElementById('global-key').value) {
+      document.getElementById('global-key').value = object_array_key;
+    }
+
+    initialize();
+
+    function initialize(){
+      /* Called on initial page load to create the first form */
+      if (payload) {
+        /* if payload successfully parsed, create initial page */
+        add_page(0);
+      } else {
+        alert("Please define a valid JSON schema in data.json and refresh the page");
+      }
+    }
 
     function generate_form(form_id){
       /* Generate DOM objects for Form contents */
-      let form_data = loop_through_json([], json_object, '')
+      let form_data = loop_through_json([], json_object, '');
 
       /* Generate form object */
       let form = document.createElement('form')
@@ -108,7 +127,6 @@
         new_input.setAttribute('data-structure', 'array');
         new_input.setAttribute('data-array-num', '0');
         new_input.setAttribute('class', 'form-control');
-        //new_input.style.marginLeft = 20 * level + "px"
         return new_input
 
       } else if (el instanceof Object) {
@@ -135,6 +153,11 @@
         if (new_value){
           new_value.id = key_id;
           new_value.className += ' label-overrides'
+
+          /* If the field is the "id" field set it to read only. This value is automatically changed on every re-indexing */
+          if (key_id === "id"){
+            new_value.setAttribute('readonly', true);
+          }
         }
 
         let add_field_btn = null
@@ -235,6 +258,9 @@
     }
 
     function add_page(){
+      /* Disable preview if currently enabled */
+      disable_preview();
+      
       /* Add new form page and navigate to it */
       let form_count = document.getElementById('form-container').children.length;
       generate_form(form_count)   /* new form */
@@ -243,6 +269,7 @@
       set_form_id(form_count)
       show_one_form(form_count)   /* Hide all other forms */
       document.getElementById('select-active-form').value = form_count;
+      repopulate_option_list();  /* Re-tag options into the select in footer */
     }
 
     function set_form_id(form_id){
@@ -287,6 +314,9 @@
     }
 
     function visible_item(selection){
+      /* Disable preview if currently enabled */
+      disable_preview();
+      
       /* Hide all forms whose 'data-number' don't match selection.value */
       show_one_form(selection.value)
     }
@@ -337,6 +367,9 @@
     }
 
     function import_existing_json(filename = './existing_json_data.json'){
+      /* Disable preview if currently enabled */
+      disable_preview();
+
       /* First delete all existing forms */
       let form_container = document.getElementById('form-container')
       while (form_container.hasChildNodes()){
@@ -463,6 +496,9 @@
     }
 
     function delete_active_pages(){
+      /* Disable preview if currently enabled */
+      disable_preview();
+      
       let active_pages = [];
       let forms = document.getElementById('form-container');
       let form_children = forms.children;
@@ -535,8 +571,142 @@
       }
     }
 
-    function json_to_html_tables(){
+    function disable_preview(){
+      /* If preview is currently active, disable it */
+      if (preview){
+        preview_form();
+      }
+    }
+
+    function preview_form(){
+      /* Display JSON document as tables. Toggled from preview button */
+
+      /* Was active, now set to inactive */
+      if (preview){
+        document.getElementById('preview-json').style.backgroundColor = "black";
+        let previews = document.getElementById('preview-container');
+        while (previews.hasChildNodes()){
+          previews.removeChild(previews.lastChild);
+        }
+        preview = false;
+        return
+      } else {
+        document.getElementById('preview-json').style.backgroundColor = "red";
+        preview = true;
+      }
+
+      /* Clear all DOM elements in container */
+      let table_container = document.getElementById('preview-container');
+      while (table_container.hasChildNodes()){
+        table_container.removeChild(table_container.lastChild);
+      }
       
+      /* Get first visible form and assign id to active_page */
+      let active_page;
+      let form_children = document.getElementById('form-container').children;
+      for (let i=0 ; i < form_children.length ; i++){
+        if (form_children[i].style.display !== 'none'){
+          /* should look like <form id="json-builder-51" data-index="51"> */
+          active_page = form_children[i].getAttribute('data-index');
+          break;
+        }
+      }
+      
+      /* Build form data into JSON data */
+      let form_data_as_json = create_json(active_page);
+
+      /* Build JSON data to form */
+      let table = document.createElement('table');
+      let keys  = Object.keys(form_data_as_json);
+      table.className = 'table table-striped table-bordered scalable_table';
+      table_container.appendChild(table);
+
+      let table_header = document.createElement('tr');
+      let header_cell  = document.createElement('th');
+      header_cell.setAttribute('colspan', 2);
+      header_cell.innerHTML = 'General';
+      table_header.appendChild(header_cell);
+      table.appendChild(header_cell);
+
+      keys.forEach((key) => {
+        /* Skip nested objects for now */
+        if (typeof form_data_as_json[key] === 'string') {
+          let row = document.createElement('tr');
+          let col_key = document.createElement('td');
+          let col_val = document.createElement('td');
+
+          col_key.innerHTML = key;
+          col_key.className += 'table-key';
+          col_val.innerHTML = form_data_as_json[key];
+          col_val.className += 'table-value';
+
+          table.appendChild(row);
+          row.appendChild(col_key);
+          row.appendChild(col_val);
+
+        } else if (form_data_as_json[key] instanceof Array) {
+
+          /* Create new form for array entries */
+          let array_table  = document.createElement('table');
+          let array_values = form_data_as_json[key];
+          array_table.className = 'table table-striped table-bordered scalable_table';
+          table_container.appendChild(array_table);
+
+          /* Create form header */
+          let array_table_header = document.createElement('tr');
+          let array_header_cell  = document.createElement('th');
+          array_header_cell.innerHTML = key;
+          array_table_header.appendChild(array_header_cell);
+          array_table.appendChild(array_table_header);
+          
+
+          /* Create table entries */
+          array_values.forEach((value) => {
+            let table_row = document.createElement('tr');
+            let table_cell = document.createElement('td');
+            table_cell.className += 'table-value';
+            table_cell.innerHTML = value;
+            table_row.appendChild(table_cell);
+            array_table.appendChild(table_row);
+          });
+            
+        } else if (form_data_as_json[key] instanceof Object) {
+        
+          /* Create new form for json object entries */
+          let object_table  = document.createElement('table');
+          //let object_values = form_data_as_json[key];
+          object_table.className = 'table table-striped table-bordered scalable_table';
+          table_container.appendChild(object_table);
+          
+          /* Create form header */
+          let object_table_header = document.createElement('tr');
+          let object_header_cell  = document.createElement('th');
+          object_header_cell.setAttribute('colspan', 2); /*spans key and value cells below it */
+          object_header_cell.innerHTML = key;
+          object_table_header.appendChild(object_header_cell);
+          object_table.appendChild(object_table_header);
+
+          /* Create table rows for JSON subobject */
+          let subobject = form_data_as_json[key];
+          let subobject_keys = Object.keys(subobject);
+
+          subobject_keys.forEach((key) => {
+            let object_row      = document.createElement('tr');
+            let object_key_cell = document.createElement('td');
+            let object_val_cell = document.createElement('td');
+            object_table.appendChild(object_row);
+            object_row.appendChild(object_key_cell);
+            object_row.appendChild(object_val_cell);
+
+            object_key_cell.innerHTML = key;
+            object_key_cell.className += ' table-key';
+            object_val_cell.innerHTML = subobject[key];
+            object_val_cell.className += ' table-value';
+
+          });
+          
+        }
+      });
     }
 
   </script>
